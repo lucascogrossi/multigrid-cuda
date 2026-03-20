@@ -1,10 +1,10 @@
-#ifndef VCYCLE_2D_H
-#define VCYCLE_2D_H
+#ifndef VCYCLE_H
+#define VCYCLE_H
 
 #include <functional>
 
-#include "grid_2d.h"
-#include "multigrid_utils_2d.h"
+#include "grid.h"
+#include "multigrid_utils.h"
 
 using Smoother = std::function<void(Grid2D&)>;
 

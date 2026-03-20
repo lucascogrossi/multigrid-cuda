@@ -1,8 +1,8 @@
-#ifndef SMOOTHERS_2D_H
-#define SMOOTHERS_2D_H
+#ifndef SMOOTHERS_H
+#define SMOOTHERS_H
 
 #include <vector>
-#include "grid_2d.h"
+#include "grid.h"
 
 inline void jacobi(Grid2D& grid) {
     std::vector<double> u_new((grid.nx+1) * (grid.ny+1), 0.0);

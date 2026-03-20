@@ -4,10 +4,10 @@
 #include <functional>
 #include <chrono>
 
-#include "smoothers_2d.h"
-#include "grid_2d.h"
-#include "multigrid_utils_2d.h"
-#include "vcycle_2d.h"
+#include "smoothers.h"
+#include "grid.h"
+#include "multigrid_utils.h"
+#include "vcycle.h"
 
 void print_usage() {
     std::cout << "Uso: ./multigrid_2d --n <grid_size> --smoother <smoother> [--tol <tolerancia>]\n"

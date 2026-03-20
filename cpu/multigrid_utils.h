@@ -1,9 +1,9 @@
-#ifndef MULTIGRID_UTILS_2D_H
-#define MULTIGRID_UTILS_2D_H
+#ifndef MULTIGRID_UTILS_H
+#define MULTIGRID_UTILS_H
 #include <cmath>
 
-#include "grid_2d.h"
-#include "smoothers_2d.h"
+#include "grid.h"
+#include "smoothers.h"
 
 
 inline std::vector<double> compute_residual(const Grid2D& grid) {
