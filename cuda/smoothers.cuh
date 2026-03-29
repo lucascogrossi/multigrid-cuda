@@ -10,8 +10,8 @@ __global__ void jacobi_kernel(Grid2D* grid, double* u_new) {
     double hy2 = grid->hy * grid->hy;
     double diag = 2.0 * (1.0/hx2 + 1.0/hy2);
 
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    int j = blockIdx.y * blockDim.y + threadIdx.y;
+    int j = blockIdx.x * blockDim.x + threadIdx.x;
+    int i = blockIdx.y * blockDim.y + threadIdx.y;
 
     if (i >= 1 && i < grid->nx && j >= 1 && j < grid->ny) {
             u_new[grid->idx(i, j)] = ((grid->u[grid->idx(i-1, j)] + grid->u[grid->idx(i+1, j)]) / hx2 +
