@@ -1,7 +1,7 @@
 #ifndef VCYCLE_CUDA_H
 #define VCYCLE_CUDA_H
 
-#include <functional>
+#include <vector>
 
 #include "grid_device.cuh"
 #include "multigrid_utils.cuh"
@@ -18,15 +18,17 @@ __host__ void v_cycle(std::vector<Grid2D*>& grids) {
 
         // 1. Pre suavizacao
         for (int k = 0; k < 2; k++) {
-            gauss_seidel_rb_kernel<<<numThreadsPerBlock, numBlocks>>>(grids[i], 0);
-            gauss_seidel_rb_kernel<<<numThreadsPerBlock, numBlocks>>>(grids[i], 1);
+            gauss_seidel_rb_kernel<<<numBlocks, numThreadsPerBlock>>>(grids[i], 0);
+            gauss_seidel_rb_kernel<<<numBlocks, numThreadsPerBlock>>>(grids[i], 1);
         }
 
         // 2. Calcula residuo
-        compute_residual_kernel<<<numThreadsPerBlock, numBlocks>>>(grids[i], grids[i]->r);
+        compute_residual_kernel<<<numBlocks, numThreadsPerBlock>>>(grids[i], grids[i]->r);
 
-        // 3. Restrict
-        restriction_kernel<<<numThreadsPerBlock, numBlocks>>>(grids[i]->r, grids[i+1]->f, grids[i]->nx, grids[i]->ny);
+        // 3. Restrict — numBlocks calculado para o grid grosso (destino)
+        dim3 numBlocksCoarse((grids[i+1]->ny + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x,
+                             (grids[i+1]->nx + numThreadsPerBlock.y - 1) / numThreadsPerBlock.y);
+        restriction_kernel<<<numBlocksCoarse, numThreadsPerBlock>>>(grids[i]->r, grids[i+1]->f, grids[i]->nx, grids[i]->ny);
 
         // 4. zera u do prox nivel
         cudaMemset(grids[i+1]->u, 0, (grids[i+1]->nx+1)*(grids[i+1]->ny+1)*sizeof(double));
@@ -42,16 +44,18 @@ __host__ void v_cycle(std::vector<Grid2D*>& grids) {
         dim3 numBlocks((grids[i]->ny + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x,
                        (grids[i]->nx + numThreadsPerBlock.y - 1) / numThreadsPerBlock.y);
         
-        // 6. Prolongation
-        prolongation_kernel<<<numThreadsPerBlock, numBlocks>>>(grids[i+1]->u, grids[i]->e, grids[i+1]->nx, grids[i+1]->ny);
+        // 6. Prolongation — numBlocks calculado para o grid grosso (fonte)
+        dim3 numBlocksCoarse((grids[i+1]->ny + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x,
+                             (grids[i+1]->nx + numThreadsPerBlock.y - 1) / numThreadsPerBlock.y);
+        prolongation_kernel<<<numBlocksCoarse, numThreadsPerBlock>>>(grids[i+1]->u, grids[i]->e, grids[i+1]->nx, grids[i+1]->ny);
 
         // 7. Correct
-        correct_kernel<<<numThreadsPerBlock, numBlocks>>>(grids[i], grids[i]->e);
+        correct_kernel<<<numBlocks, numThreadsPerBlock>>>(grids[i], grids[i]->e);
 
         // 8. Pos suavizacao
         for (int k = 0; k < 2; k++) {
-            gauss_seidel_rb_kernel<<<numThreadsPerBlock, numBlocks>>>(grids[i], 0);
-            gauss_seidel_rb_kernel<<<numThreadsPerBlock, numBlocks>>>(grids[i], 1);
+            gauss_seidel_rb_kernel<<<numBlocks, numThreadsPerBlock>>>(grids[i], 0);
+            gauss_seidel_rb_kernel<<<numBlocks, numThreadsPerBlock>>>(grids[i], 1);
         }
     }   
 }

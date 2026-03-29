@@ -69,7 +69,6 @@ __global__ void restriction_kernel(const double *r, double* r_coarse, int nx, in
 __global__ void prolongation_kernel(const double* e_coarse, double* e_fine, int nx_c, int ny_c) {
 
     // grid fino tem n_coarse*2 intervalos
-    int nx_f = nx_c * 2;
     int ny_f = ny_c * 2;
 
     int j = blockIdx.x * blockDim.x + threadIdx.x;
@@ -111,11 +110,11 @@ __host__ void solve_coarse(Grid2D* grid, int sweeps = 1) {
 
     dim3 numThreadsPerBlock(16, 16);
     dim3 numBlocks((grid->ny + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x,
-              (grid->nx + numBlocks.y - 1) / numBlocks.y);
+              (grid->nx + numThreadsPerBlock.y - 1) / numThreadsPerBlock.y);
 
     for (int k = 0; k < sweeps; k++) {
-        gauss_seidel_rb_kernel<<<numThreadsPerBlock, numBlocks>>>(grid, 0);
-        gauss_seidel_rb_kernel<<<numThreadsPerBlock, numBlocks>>>(grid, 1);
+        gauss_seidel_rb_kernel<<<numBlocks, numThreadsPerBlock>>>(grid, 0);
+        gauss_seidel_rb_kernel<<<numBlocks, numThreadsPerBlock>>>(grid, 1);
     }
 }
 
