@@ -6,22 +6,22 @@
 #include "grid_device.cuh"
 #include "smoothers.cuh"
 
-/*
-inline std::vector<double> compute_residual(const Grid2D& grid) {
-    std::vector<double> r((grid.nx+1) * (grid.ny+1), 0.0);
-    double hx2 = grid.hx * grid.hx;
-    double hy2 = grid.hy * grid.hy;
+// pre alocar r no host
+__global__ void compute_residual_kernel(const Grid2D* grid, double* r) {
+    double hx2 = grid->hx * grid->hx;
+    double hy2 = grid->hy * grid->hy;
 
-    for (int i = 1; i < grid.nx; i++) {
-        for (int j = 1; j < grid.ny; j++) {
-            double Au_ij = (-grid.u[grid.idx(i-1,j)] + 2*grid.u[grid.idx(i,j)] - grid.u[grid.idx(i+1,j)]) / hx2
-                         + (-grid.u[grid.idx(i,j-1)] + 2*grid.u[grid.idx(i,j)] - grid.u[grid.idx(i,j+1)]) / hy2;
-            r[grid.idx(i, j)] = grid.f[grid.idx(i, j)] - Au_ij;
-        }
+    int j = blockIdx.x * blockDim.x + threadIdx.x;
+    int i = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (i >= 1 && i < grid->nx && j >= 1 && j < grid->ny) {
+            double Au_ij = (-grid->u[grid->idx(i-1,j)] + 2*grid->u[grid->idx(i,j)] - grid->u[grid->idx(i+1,j)]) / hx2
+                         + (-grid->u[grid->idx(i,j-1)] + 2*grid->u[grid->idx(i,j)] - grid->u[grid->idx(i,j+1)]) / hy2;
+            r[grid->idx(i, j)] = grid->f[grid->idx(i, j)] - Au_ij;
     }
-    return r;
 }
 
+/*
 inline double residual_norm(const Grid2D& grid) {
     std::vector<double> r = compute_residual(grid);
     double norm = 0.0;
