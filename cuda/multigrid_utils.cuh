@@ -22,6 +22,7 @@ __global__ void compute_residual_kernel(const Grid2D* grid, double* r) {
 }
 
 /*
+TODO: REDUCAO NA GPU
 inline double residual_norm(const Grid2D& grid) {
     std::vector<double> r = compute_residual(grid);
     double norm = 0.0;
@@ -64,50 +65,40 @@ __global__ void restriction_kernel(const double *r, double* r_coarse, int nx, in
     }
 }
 
-/*
-inline std::vector<double> prolongation(const std::vector<double>& e_coarse, int nx_c, int ny_c) {
+// cada thread cuida de um ponto do grid fino
+__global__ void prolongation_kernel(const double* e_coarse, double* e_fine, int nx_c, int ny_c) {
+
     // grid fino tem n_coarse*2 intervalos
     int nx_f = nx_c * 2;
     int ny_f = ny_c * 2;
-    std::vector<double> e_fine((nx_f+1) * (ny_f+1), 0.0);
 
-    // Interpolacao linear
-    for (int i = 0; i <= nx_c; i++) {
-        for (int j = 0; j <= ny_c; j++) {
-            // caso 1: copia direto
-            e_fine[2*i*(ny_f+1) + 2*j] = e_coarse[i*(ny_c+1) + j];
+    int j = blockIdx.x * blockDim.x + threadIdx.x;
+    int i = blockIdx.y * blockDim.y + threadIdx.y;
 
-            // caso 2: media horizontal
-            if (j < ny_c)
-                e_fine[2*i*(ny_f+1) + 2*j+1] = (e_coarse[i*(ny_c+1) + j] + e_coarse[i*(ny_c+1) + j+1]) / 2.0;
+    if (i <= nx_c && j <= ny_c) {
+        // caso 1: copia direto
+        e_fine[2*i*(ny_f+1) + 2*j] = e_coarse[i*(ny_c+1) + j];
+        
+        // caso 2: media horizontal
+        if (j < ny_c)
+            e_fine[2*i*(ny_f+1) + 2*j+1] = (e_coarse[i*(ny_c+1) + j] + e_coarse[i*(ny_c+1) + j+1]) / 2.0;
+          
+        // caso 3: media vertical
+        if (i < nx_c)
+             e_fine[(2*i+1)*(ny_f+1) + 2*j] = (e_coarse[i*(ny_c+1) + j] + e_coarse[(i+1)*(ny_c+1) + j]) / 2.0;
             
-            // caso 3: media vertical
-            if (i < nx_c)
-                 e_fine[(2*i+1)*(ny_f+1) + 2*j] = (e_coarse[i*(ny_c+1) + j] + e_coarse[(i+1)*(ny_c+1) + j]) / 2.0;
-            
-            // caso 4: media dos 4 vizinhos
-            if (i < nx_c && j < ny_c)
-                e_fine[(2*i+1)*(ny_f+1) + 2*j+1] = (e_coarse[i*(ny_c+1) + j] + e_coarse[i*(ny_c+1) + j+1] +
+        // caso 4: media dos 4 vizinhos
+        if (i < nx_c && j < ny_c)
+            e_fine[(2*i+1)*(ny_f+1) + 2*j+1] = (e_coarse[i*(ny_c+1) + j] + e_coarse[i*(ny_c+1) + j+1] +
                                                     e_coarse[(i+1)*(ny_c+1) + j] + e_coarse[(i+1)*(ny_c+1) + j+1]) / 4.0;
-        }
     }
-    return e_fine;
 }
 
+/*
 inline void solve_coarse(Grid2D& coarse) {
     std::fill(coarse.u.begin(), coarse.u.end(), 0.0);
     gauss_seidel_rb(coarse);
 }
 */
-
-__global__ void correct_kernel(Grid2D* grid, const double* e_fine) {
-
-    int j = blockIdx.x * blockDim.x + threadIdx.x;
-    int i = blockIdx.y * blockDim.y + threadIdx.y;
-
-    if (i >= 1 && i < grid->nx && j >= 1 && j < grid->ny) {
-        grid->u[grid->idx(i, j)] += e_fine[grid->idx(i, j)];
-    }
-}
 
 #endif
