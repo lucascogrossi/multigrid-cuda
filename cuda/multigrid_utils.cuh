@@ -94,18 +94,28 @@ __global__ void prolongation_kernel(const double* e_coarse, double* e_fine, int 
     }
 }
 
+__global__ void correct_kernel(Grid2D* grid, const double* e_fine) {
+
+    int j = blockIdx.x * blockDim.x + threadIdx.x;
+    int i = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (i >= 1 && i < grid->nx && j >= 1 && j < grid->ny) {
+        grid->u[grid->idx(i, j)] += e_fine[grid->idx(i, j)];
+    }
+}
+
 // No momento o grid mais grosso tem apenas 1 ponto interior.
-// 255 threads ficam ocisas
+// 255 threads ficam ociosas
 __host__ void solve_coarse(Grid2D* grid, int sweeps = 1) {
     cudaMemset(grid->u, 0, (grid->nx+1)*(grid->ny+1)*sizeof(double));
 
-    dim3 block(16, 16);
-    dim3 grid_dim((grid->ny + block.x - 1) / block.x,
-              (grid->nx + block.y - 1) / block.y);
+    dim3 numThreadsPerBlock(16, 16);
+    dim3 numBlocks((grid->ny + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x,
+              (grid->nx + numBlocks.y - 1) / numBlocks.y);
 
     for (int k = 0; k < sweeps; k++) {
-        gauss_seidel_rb_kernel<<<grid_dim, block>>>(grid, 0);
-        gauss_seidel_rb_kernel<<<grid_dim, block>>>(grid, 1);
+        gauss_seidel_rb_kernel<<<numThreadsPerBlock, numBlocks>>>(grid, 0);
+        gauss_seidel_rb_kernel<<<numThreadsPerBlock, numBlocks>>>(grid, 1);
     }
 }
 
