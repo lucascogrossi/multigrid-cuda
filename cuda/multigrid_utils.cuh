@@ -1,5 +1,5 @@
-#ifndef MULTIGRID_UTILS_H
-#define MULTIGRID_UTILS_H
+#ifndef MULTIGRID_UTILS_CUDA_H
+#define MULTIGRID_UTILS_CUDA_H
 
 #include <cmath>
 
