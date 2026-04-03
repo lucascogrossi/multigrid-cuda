@@ -1,0 +1,4 @@
+cuda/multigrid_cuda
+cpu/multigrid_cpu
+*.o
+*.out

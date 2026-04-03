@@ -8,6 +8,7 @@ struct Grid2D {
     double hx, hy;         // tamanho de cada intervalo
     double Lx, Ly;         // comprimento do domínio
     double* u;             // solucao aproximada em cada ponto
+    double* u_new;         // buffer temporario para jacobi
     double* f;             // termo fonte
     double* r;             // buffer temporario para o residuo
     double* e;             // buffer temporario de correcao do nivel
@@ -16,10 +17,12 @@ struct Grid2D {
     Grid2D(int nx, int ny, double Lx, double Ly)
         : nx(nx), ny(ny), Lx(Lx), Ly(Ly),
           hx(Lx / nx), hy(Ly / ny),
-          u(nullptr), f(nullptr), r(nullptr), e(nullptr) {
+          u(nullptr), u_new(nullptr), f(nullptr), r(nullptr), e(nullptr) {
         int size = (nx+1) * (ny+1) * sizeof(double);
         cudaMallocManaged(&u, size);
         cudaMemset(u, 0, size);
+        cudaMallocManaged(&u_new, size);
+        cudaMemset(u_new, 0, size);
         cudaMallocManaged(&f, size);
         cudaMemset(f, 0, size);
         cudaMallocManaged(&r, size);

@@ -5,6 +5,7 @@
 
 #include "grid_device.cuh"
 #include "multigrid_utils.cuh"
+#include "smoothers.cuh"
 
 // Recebe a hierarquia de grids pre alocadas
 __host__ void v_cycle(std::vector<Grid2D*>& grids) {
@@ -18,8 +19,9 @@ __host__ void v_cycle(std::vector<Grid2D*>& grids) {
 
         // 1. Pre suavizacao
         for (int k = 0; k < 2; k++) {
-            gauss_seidel_rb_kernel<<<numBlocks, numThreadsPerBlock>>>(grids[i], 0);
-            gauss_seidel_rb_kernel<<<numBlocks, numThreadsPerBlock>>>(grids[i], 1);
+            jacobi_amortecido_kernel<<<numBlocks, numThreadsPerBlock>>>(grids[i], grids[i]->u_new);
+            cudaDeviceSynchronize();
+            std::swap(grids[i]->u, grids[i]->u_new);
         }
 
         // 2. Calcula residuo
@@ -43,8 +45,8 @@ __host__ void v_cycle(std::vector<Grid2D*>& grids) {
         dim3 numThreadsPerBlock(16, 16);
         dim3 numBlocks((grids[i]->ny + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x,
                        (grids[i]->nx + numThreadsPerBlock.y - 1) / numThreadsPerBlock.y);
-        
-        // 6. Prolongation — numBlocks calculado para o grid grosso (fonte)
+
+        // 6. Prolongation:  numBlocks calculado para o grid grosso (fonte)
         dim3 numBlocksCoarse((grids[i+1]->ny + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x,
                              (grids[i+1]->nx + numThreadsPerBlock.y - 1) / numThreadsPerBlock.y);
         prolongation_kernel<<<numBlocksCoarse, numThreadsPerBlock>>>(grids[i+1]->u, grids[i]->e, grids[i+1]->nx, grids[i+1]->ny);
@@ -54,10 +56,11 @@ __host__ void v_cycle(std::vector<Grid2D*>& grids) {
 
         // 8. Pos suavizacao
         for (int k = 0; k < 2; k++) {
-            gauss_seidel_rb_kernel<<<numBlocks, numThreadsPerBlock>>>(grids[i], 0);
-            gauss_seidel_rb_kernel<<<numBlocks, numThreadsPerBlock>>>(grids[i], 1);
+            jacobi_amortecido_kernel<<<numBlocks, numThreadsPerBlock>>>(grids[i], grids[i]->u_new);
+            cudaDeviceSynchronize();
+            std::swap(grids[i]->u, grids[i]->u_new);
         }
-    }   
+    }
 }
 
 #endif

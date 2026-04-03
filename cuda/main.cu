@@ -45,7 +45,7 @@ int main(int argc, char* argv[]) {
 
     std::cout << "\n=== Multigrid V-cycle 2D (CUDA) ===\n"
               << "grid:     " << n << "x" << n << " em [0,1]x[0,1]\n"
-              << "smoother: gauss_seidel_rb\n\n";
+              << "smoother: jacobi_amortecido\n\n";
 
     // pre-aloca hierarquia de grids em unified memory
     std::vector<Grid2D*> grids;
