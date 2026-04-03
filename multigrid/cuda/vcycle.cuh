@@ -7,22 +7,37 @@
 #include "multigrid_utils.cuh"
 #include "smoothers.cuh"
 
+enum SmootherType { JACOBI, JACOBI_AMORTECIDO, GAUSS_SEIDEL_RB };
+
+__host__ void smooth_grid(Grid2D* g, SmootherType smoother, dim3 numBlocks, dim3 numThreads) {
+    if (smoother == GAUSS_SEIDEL_RB) {
+        gauss_seidel_rb_kernel<<<numBlocks, numThreads>>>(g, 0);
+        cudaDeviceSynchronize();
+        gauss_seidel_rb_kernel<<<numBlocks, numThreads>>>(g, 1);
+        cudaDeviceSynchronize();
+    } else {
+        if (smoother == JACOBI)
+            jacobi_kernel<<<numBlocks, numThreads>>>(g, g->u_new);
+        else
+            jacobi_amortecido_kernel<<<numBlocks, numThreads>>>(g, g->u_new);
+        cudaDeviceSynchronize();
+        std::swap(g->u, g->u_new);
+    }
+}
+
 // Recebe a hierarquia de grids pre alocadas
-__host__ void v_cycle(std::vector<Grid2D*>& grids) {
+__host__ void v_cycle(std::vector<Grid2D*>& grids, SmootherType smoother) {
 
     // Descida ate o penultimo nivel da grid
-    for (int i = 0; i < grids.size() - 1; i++) {
+    for (int i = 0; i < (int)grids.size() - 1; i++) {
 
         dim3 numThreadsPerBlock(16, 16);
         dim3 numBlocks((grids[i]->ny + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x,
                        (grids[i]->nx + numThreadsPerBlock.y - 1) / numThreadsPerBlock.y);
 
         // 1. Pre suavizacao
-        for (int k = 0; k < 2; k++) {
-            jacobi_amortecido_kernel<<<numBlocks, numThreadsPerBlock>>>(grids[i], grids[i]->u_new);
-            cudaDeviceSynchronize();
-            std::swap(grids[i]->u, grids[i]->u_new);
-        }
+        for (int k = 0; k < 2; k++)
+            smooth_grid(grids[i], smoother, numBlocks, numThreadsPerBlock);
 
         // 2. Calcula residuo
         compute_residual_kernel<<<numBlocks, numThreadsPerBlock>>>(grids[i], grids[i]->r);
@@ -40,13 +55,13 @@ __host__ void v_cycle(std::vector<Grid2D*>& grids) {
     solve_coarse(grids.back(), 1);
 
     // Subida ate o nivel mais fino (primeiro nivel)
-    for (int i = grids.size()-2; i >= 0; i--) {
+    for (int i = (int)grids.size()-2; i >= 0; i--) {
 
         dim3 numThreadsPerBlock(16, 16);
         dim3 numBlocks((grids[i]->ny + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x,
                        (grids[i]->nx + numThreadsPerBlock.y - 1) / numThreadsPerBlock.y);
 
-        // 6. Prolongation:  numBlocks calculado para o grid grosso (fonte)
+        // 6. Prolongation: numBlocks calculado para o grid grosso (fonte)
         dim3 numBlocksCoarse((grids[i+1]->ny + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x,
                              (grids[i+1]->nx + numThreadsPerBlock.y - 1) / numThreadsPerBlock.y);
         prolongation_kernel<<<numBlocksCoarse, numThreadsPerBlock>>>(grids[i+1]->u, grids[i]->e, grids[i+1]->nx, grids[i+1]->ny);
@@ -55,11 +70,8 @@ __host__ void v_cycle(std::vector<Grid2D*>& grids) {
         correct_kernel<<<numBlocks, numThreadsPerBlock>>>(grids[i], grids[i]->e);
 
         // 8. Pos suavizacao
-        for (int k = 0; k < 2; k++) {
-            jacobi_amortecido_kernel<<<numBlocks, numThreadsPerBlock>>>(grids[i], grids[i]->u_new);
-            cudaDeviceSynchronize();
-            std::swap(grids[i]->u, grids[i]->u_new);
-        }
+        for (int k = 0; k < 2; k++)
+            smooth_grid(grids[i], smoother, numBlocks, numThreadsPerBlock);
     }
 }
 

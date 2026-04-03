@@ -7,45 +7,46 @@
 #include "vcycle.cuh"
 
 void print_usage() {
-    std::cout << "Uso: ./multigrid_cuda --n <grid_size>\n"
+    std::cout << "Uso: ./multigrid_cuda <n> <smoother> [max_vcycles]\n"
               << "\n"
               << "Argumentos:\n"
-              << "  --n   Tamanho do grid (potencia de 2: 64, 128, 256, ...)\n"
+              << "  n           Tamanho do grid (potencia de 2: 64, 128, 256, ...)\n"
+              << "  smoother    jacobi | jacobi_amortecido | gauss_seidel_rb\n"
+              << "  max_vcycles Numero de v-cycles (default: 10)\n"
               << "\n"
               << "Exemplo:\n"
-              << "  ./multigrid_cuda --n 256\n";
+              << "  ./multigrid_cuda 256 jacobi_amortecido\n"
+              << "  ./multigrid_cuda 256 gauss_seidel_rb 20\n";
 }
 
 int main(int argc, char* argv[]) {
 
-    int n = 0;
-    int max_vcycles = 10;
-
-    // parse de argumentos
-    for (int i = 1; i < argc; i++) {
-        std::string arg = argv[i];
-        if (arg == "--n" && i + 1 < argc)
-            n = std::atoi(argv[++i]);
-        else if (arg == "--help" || arg == "-h") {
-            print_usage();
-            return 0;
-        }
-        else {
-            std::cerr << "Argumento desconhecido: " << arg << "\n\n";
-            print_usage();
-            return 1;
-        }
+    if (argc < 3 || std::string(argv[1]) == "-h" || std::string(argv[1]) == "--help") {
+        print_usage();
+        return argc < 3 ? 1 : 0;
     }
 
-    if (n == 0) {
-        std::cerr << "Erro: --n e obrigatorio.\n\n";
-        print_usage();
+    int n = std::atoi(argv[1]);
+    std::string smoother_name = argv[2];
+    int max_vcycles = (argc > 3) ? std::atoi(argv[3]) : 10;
+
+    SmootherType smoother;
+    if (smoother_name == "jacobi")
+        smoother = JACOBI;
+    else if (smoother_name == "jacobi_amortecido")
+        smoother = JACOBI_AMORTECIDO;
+    else if (smoother_name == "gauss_seidel_rb")
+        smoother = GAUSS_SEIDEL_RB;
+    else {
+        std::cerr << "Smoother invalido: " << smoother_name << "\n"
+                  << "Opcoes: jacobi | jacobi_amortecido | gauss_seidel_rb\n";
         return 1;
     }
 
     std::cout << "\n=== Multigrid V-cycle 2D (CUDA) ===\n"
-              << "grid:     " << n << "x" << n << " em [0,1]x[0,1]\n"
-              << "smoother: jacobi_amortecido\n\n";
+              << "grid:        " << n << "x" << n << " em [0,1]x[0,1]\n"
+              << "smoother:    " << smoother_name << "\n"
+              << "max_vcycles: " << max_vcycles << "\n\n";
 
     // pre-aloca hierarquia de grids em unified memory
     std::vector<Grid2D*> grids;
@@ -77,7 +78,7 @@ int main(int argc, char* argv[]) {
     cudaEventRecord(start);
 
     for (int k = 1; k <= max_vcycles; k++) {
-        v_cycle(grids);
+        v_cycle(grids, smoother);
         std::cout << "v-cycle " << k << "\n";
     }
 

@@ -11,53 +11,30 @@
 using Smoother = std::function<void(Grid2D&)>;
 
 void print_usage() {
-    std::cout << "Uso: ./single_grid_cpu --n <grid_size> --smoother <smoother> [--tol <tol>] [--max_iters <n>]\n"
+    std::cout << "Uso: ./single_grid_cpu <n> <smoother> [tol] [max_iters]\n"
               << "\n"
               << "Argumentos:\n"
-              << "  --n          Tamanho do grid (potencia de 2: 64, 128, 256, ...)\n"
-              << "  --smoother   Metodo de suavizacao:\n"
-              << "                 jacobi, jacobi_amortecido, gauss_seidel,\n"
-              << "                 gauss_seidel_rb, sor\n"
-              << "  --tol        Tolerancia para convergencia (default: 1e-6)\n"
-              << "  --max_iters  Numero maximo de iteracoes (default: 100000)\n"
+              << "  n          Tamanho do grid (potencia de 2: 64, 128, 256, ...)\n"
+              << "  smoother   jacobi | jacobi_amortecido | gauss_seidel | gauss_seidel_rb | sor\n"
+              << "  tol        Tolerancia para convergencia (default: 1e-6)\n"
+              << "  max_iters  Numero maximo de iteracoes (default: 100000)\n"
               << "\n"
               << "Exemplo:\n"
-              << "  ./single_grid_cpu --n 256 --smoother gauss_seidel_rb --tol 1e-6\n";
+              << "  ./single_grid_cpu 256 gauss_seidel_rb\n"
+              << "  ./single_grid_cpu 256 gauss_seidel_rb 1e-8 50000\n";
 }
 
 int main(int argc, char* argv[]) {
 
-    int n = 0;
-    std::string smoother_name;
-    int max_iters = 100000;
-    double tol = 1e-6;
-
-    for (int i = 1; i < argc; i++) {
-        std::string arg = argv[i];
-        if (arg == "--n" && i + 1 < argc)
-            n = std::atoi(argv[++i]);
-        else if (arg == "--smoother" && i + 1 < argc)
-            smoother_name = argv[++i];
-        else if (arg == "--max_iters" && i + 1 < argc)
-            max_iters = std::atoi(argv[++i]);
-        else if (arg == "--tol" && i + 1 < argc)
-            tol = std::atof(argv[++i]);
-        else if (arg == "--help" || arg == "-h") {
-            print_usage();
-            return 0;
-        }
-        else {
-            std::cerr << "Argumento desconhecido: " << arg << "\n\n";
-            print_usage();
-            return 1;
-        }
-    }
-
-    if (n == 0 || smoother_name.empty()) {
-        std::cerr << "Erro: --n e --smoother sao obrigatorios.\n\n";
+    if (argc < 3 || std::string(argv[1]) == "-h" || std::string(argv[1]) == "--help") {
         print_usage();
-        return 1;
+        return argc < 3 ? 1 : 0;
     }
+
+    int n = std::atoi(argv[1]);
+    std::string smoother_name = argv[2];
+    double tol = (argc > 3) ? std::atof(argv[3]) : 1e-6;
+    int max_iters = (argc > 4) ? std::atoi(argv[4]) : 100000;
 
     Smoother smooth;
     if (smoother_name == "jacobi")
@@ -100,7 +77,7 @@ int main(int argc, char* argv[]) {
         smooth(grid);
         double res = residual_norm(grid);
         std::cout << "iter " << k << "  residuo = " << res << "\n";
-        if (res < tol) 
+        if (res < tol)
             break;
     }
 
@@ -114,7 +91,7 @@ int main(int argc, char* argv[]) {
             double y = j * grid.hy;
             double u_exact = sin(M_PI * x) * sin(M_PI * y);
             double err = fabs(grid.u[grid.idx(i, j)] - u_exact);
-            if (err > max_err) 
+            if (err > max_err)
                 max_err = err;
         }
     }
