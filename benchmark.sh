@@ -8,6 +8,8 @@ make all
 SIZES=(64 128 256 512 1024 2048 4096)
 SMOOTHERS_CPU=(jacobi jacobi_amortecido gauss_seidel gauss_seidel_rb sor)
 SMOOTHERS_CUDA=(jacobi jacobi_amortecido gauss_seidel_rb)
+TOL=1e-8
+MAX_ITERS=1000000
 HEADER="metodo,plataforma,n,smoother,iteracoes,erro,residuo,tempo_ms"
 
 # Binarios
@@ -34,7 +36,7 @@ run_bench() {
 
     # Rodar uma vez so, sem --csv
     local output
-    output=$("$bin" "$n" "$smoother")
+    output=$("$bin" "$n" "$smoother" "$TOL" "$MAX_ITERS")
 
     # Extrair historico de residuos
     echo "iteracao,residuo" > "$resfile"
