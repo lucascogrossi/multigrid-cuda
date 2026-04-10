@@ -2,6 +2,7 @@
 #define SMOOTHERS_H
 
 #include <vector>
+#include <cmath>
 #include "grid.h"
 
 inline void jacobi(Grid2D& grid) {
@@ -47,7 +48,9 @@ inline void gauss_seidel(Grid2D& grid) {
 
 // Gauss-Seidel Sobrerelaxado
 inline void sor(Grid2D& grid) {
-    double omega = 1.15;
+    // omega otimo para o problema modelo de Poisson 2D com Dirichlet:
+    // 2 / (1 + sin(pi*h))
+    double omega = 2.0 / (1.0 + std::sin(M_PI * grid.h));
     double h2 = grid.h * grid.h;
 
     for (int i = 1; i < grid.nx; i++) {
