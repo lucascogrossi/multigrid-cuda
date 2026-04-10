@@ -9,7 +9,8 @@ SIZES=(64 128 256 512 1024 2048 4096)
 SMOOTHERS_CPU=(jacobi_amortecido gauss_seidel gauss_seidel_rb sor)
 SMOOTHERS_CUDA=(jacobi_amortecido gauss_seidel_rb)
 TOL=1e-8
-MAX_ITERS=1000000
+MAX_ITERS_SG=50000
+MAX_ITERS_MG=200
 HEADER="metodo,plataforma,n,smoother,iteracoes,erro,residuo,tempo_ms"
 
 # Binarios
@@ -34,9 +35,17 @@ run_bench() {
     local resfile="$dir/${smoother}_residuos.csv"
     local outfile="$dir/${smoother}.csv"
 
+    # Limite de iteracoes depende do metodo:
+    local max_iters
+    if [ "$method" = "sg" ]; then
+        max_iters="$MAX_ITERS_SG"
+    else
+        max_iters="$MAX_ITERS_MG"
+    fi
+
     # Rodar uma vez so, sem --csv
     local output
-    output=$("$bin" "$n" "$smoother" "$TOL" "$MAX_ITERS")
+    output=$("$bin" "$n" "$smoother" "$TOL" "$max_iters")
 
     # Extrair historico de residuos
     echo "iteracao,residuo" > "$resfile"
