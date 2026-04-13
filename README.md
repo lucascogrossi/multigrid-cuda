@@ -1,8 +1,32 @@
-Trabalho de conclusão de curso
+**Implementação e paralelização do Método Multigrid com V-ciclo em processadores gráficos de propósito geral (GPGPUs)**
 
-Implementação e paralelização do Método Multigrid com V-ciclo em processadores gráficos de propósito geral (GPGPUs)
+#### Problema
 
+Equação de Poisson 2D com condições de contorno de Dirichlet em [0,1]x[0,1]:
 
+```v
+-∇²u(x,y) = 2π²sin(πx)sin(πy)
+```
+
+Solução analítica: `u(x,y) = sin(πx)sin(πy)`
+
+#### Build e execução
+
+```bash
+make all        # compila CPU e CUDA (requer nvcc para CUDA)
+make cpu        # compila apenas CPU
+./benchmark.sh  # roda todos os benchmarks e gera results/summary.csv
+```
+
+Executar individualmente:
+
+```bash
+./multigrid/cpu/mg_cpu <n> <smoother> [tol] [max_iters]
+./multigrid/cuda/mg_cuda <n> <smoother> [tol] [max_iters]
+# exemplo: ./multigrid/cpu/mg_cuda 256 gauss_seidel_rb 1e-8 100
+```
+
+#### Resultados
 
 | Grid       | CPU (ms)  | CUDA (ms) | Speedup |
 |------------|-----------|-----------|---------|
